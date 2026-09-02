@@ -331,13 +331,37 @@ install_ngrok() {
 		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Installing Ngrok..."${WHITE}
 		arch=`uname -m`
 		if [[ ("$arch" == *'arm'*) || ("$arch" == *'Android'*) ]]; then
-			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-arm' 'ngrok'
+			ngrok_arch="linux-arm"
 		elif [[ "$arch" == *'aarch64'* ]]; then
-			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-arm64' 'ngrok'
+			ngrok_arch="linux-arm64"
 		elif [[ "$arch" == *'x86_64'* ]]; then
-			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-64' 'ngrok'
+			ngrok_arch="linux-amd64"
 		else
-			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-386' 'ngrok'
+			ngrok_arch="linux-386"
+		fi
+
+		# Try multiple download sources
+		download_success=false
+		urls=(
+			"https://bin.equinox.io/b/6panyg5ky5gf/ngrok-${ngrok_arch}"
+			"https://dl.equinox.io/ngrok/ngrok-v3-stable-linux-${ngrok_arch}.zip"
+		)
+
+		for url in "${urls[@]}"; do
+			echo -e "\n${CYAN}Trying: ${url}${WHITE}"
+			if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output .server/ngrok "$url" 2>/dev/null; then
+				if [[ -s ".server/ngrok" ]]; then
+					chmod +x .server/ngrok
+					download_success=true
+					break
+				fi
+			fi
+		done
+
+		# If download failed, warn user
+		if [[ "$download_success" == "false" ]]; then
+			echo -e "\n${ORANGE}Warning: Ngrok download failed. Use Cloudflared instead (option 2).${WHITE}"
+			touch .server/ngrok.unavailable
 		fi
 	fi
 }
@@ -483,19 +507,25 @@ start_cloudflared() {
 
 ## Start Ngrok
 start_ngrok() {
+	if [[ -e ".server/ngrok.unavailable" ]]; then
+		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok is not installed. Please use Cloudflared instead."
+		sleep 2
+		tunnel_menu
+		return
+	fi
+
 	cusport
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Initializing... ${GREEN}( ${CYAN}http://$HOST:$PORT ${GREEN})"
 	{ sleep 1; setup_site; }
 	echo -e "\n"
-	read -n1 -p "${RED}[${WHITE}?${RED}]${ORANGE} Do you have an Ngrok Auth Token? ${GREEN}[${CYAN}y${GREEN}/${CYAN}N${GREEN}]:${ORANGE} " ngrok_op
-	if [[ ${ngrok_op,,} == "y" ]]; then
-		read -p "${RED}[${WHITE}-${RED}]${ORANGE} Enter your Ngrok Auth Token :${ORANGE} " NGROK_AUTHTOKEN
-		[[ -z "$NGROK_AUTHTOKEN" ]] && {
-			echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok Auth Token cannot be empty."
-			{ sleep 2; tunnel_menu; }
-		}
-		./.server/ngrok authtoken "$NGROK_AUTHTOKEN" > /dev/null 2>&1
-	fi
+	echo -e "${RED}[${WHITE}!${RED}]${ORANGE} Ngrok now requires a free auth token.${WHITE}"
+	echo -e "${CYAN}Get your free token at: ${GREEN}https://ngrok.com${WHITE}"
+	read -p "${RED}[${WHITE}-${RED}]${ORANGE} Enter your Ngrok Auth Token :${ORANGE} " NGROK_AUTHTOKEN
+	[[ -z "$NGROK_AUTHTOKEN" ]] && {
+		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok Auth Token is required."
+		{ sleep 2; tunnel_menu; }
+	}
+	./.server/ngrok authtoken "$NGROK_AUTHTOKEN" > /dev/null 2>&1
 	echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Launching Ngrok..."
 
 	if [[ `command -v termux-chroot` ]]; then
