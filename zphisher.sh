@@ -565,9 +565,9 @@ start_ngrok() {
 	echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Launching Ngrok..."
 
 	if [[ `command -v termux-chroot` ]]; then
-		sleep 1 && termux-chroot ./.server/ngrok http "$HOST":"$PORT" --log=stdout > .server/.ngrok.log 2>&1 &
+		sleep 1 && termux-chroot ./.server/ngrok http "$HOST":"$PORT" --log=.server/.ngrok.log > /dev/null 2>&1 &
 	else
-		sleep 1 && ./.server/ngrok http "$HOST":"$PORT" --log=stdout > .server/.ngrok.log 2>&1 &
+		sleep 1 && ./.server/ngrok http "$HOST":"$PORT" --log=.server/.ngrok.log > /dev/null 2>&1 &
 	fi
 
 	# Wait for URL to appear (up to 30 seconds)
