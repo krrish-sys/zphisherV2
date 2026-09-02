@@ -676,7 +676,7 @@ custom_url() {
 		mask_clean="${mask#https://}"
 		mask_clean="${mask_clean#http://}"
 		url="https://$url"
-		masked_url="$mask_clean@$processed_url"
+		masked_url="https://$mask_clean@$processed_url"
 		processed_url="https://$processed_url"
 	else
 		# echo "[!] No url provided / Regex Not Matched"
