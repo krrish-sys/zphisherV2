@@ -513,21 +513,26 @@ start_cloudflared() {
 	echo -ne "\n\n${RED}[${WHITE}-${RED}]${GREEN} Launching Cloudflared..."
 
 	if [[ `command -v termux-chroot` ]]; then
-		sleep 2 && termux-chroot ./.server/cloudflared tunnel --url "$HOST":"$PORT" --logfile .server/.cld.log > /dev/null 2>&1 &
+		sleep 2 && termux-chroot ./.server/cloudflared tunnel --url "$HOST":"$PORT" --logfile .server/.cld.log > .server/.cld.log 2>&1 &
 	else
-		sleep 2 && ./.server/cloudflared tunnel --url "$HOST":"$PORT" --logfile .server/.cld.log > /dev/null 2>&1 &
+		sleep 2 && ./.server/cloudflared tunnel --url "$HOST":"$PORT" --logfile .server/.cld.log > .server/.cld.log 2>&1 &
 	fi
 
 	# Wait for URL to appear in log (up to 30 seconds)
 	cldflr_url=""
 	for i in {1..15}; do
 		sleep 2
+		# Match trycloudflare.com (primary) and cfargotunnel.com (fallback)
 		cldflr_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' ".server/.cld.log" 2>/dev/null | head -1)
+		[[ -z "$cldflr_url" ]] && cldflr_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.cfargotunnel\.com' ".server/.cld.log" 2>/dev/null | head -1)
 		[[ -n "$cldflr_url" ]] && break
 	done
 
 	if [[ -z "$cldflr_url" ]]; then
-		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Failed to get Cloudflared URL. Check .server/.cld.log"
+		echo -e "\n${RED}[${WHITE}!${RED}]${RED} Failed to get Cloudflared URL."
+		echo -e "${CYAN}Log output:${WHITE}"
+		cat .server/.cld.log 2>/dev/null | tail -10
+		echo -e "\n${CYAN}Try running manually: ${GREEN}./.server/cloudflared tunnel --url $HOST:$PORT${WHITE}"
 		return 1
 	fi
 
